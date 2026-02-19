@@ -4,64 +4,71 @@ CLI Markdown viewer with FIGlet ASCII art headings and a full-screen pager.
 
 Unlike other terminal markdown viewers that only use bold+color for headings, Glyph renders h1 headings as large FIGlet ASCII art, h2 in double-bordered boxes, and h3-h6 with descending styled emphasis -- giving a browser-like visual hierarchy entirely within the terminal.
 
+## Requirements
+
+- Node.js 18+
+- npm
+
+No other system dependencies. Works over SSH, no graphics protocols needed.
+
 ## Install
 
 ```bash
 git clone <repo-url> glyph
 cd glyph
 npm install
+sudo npm link
+```
+
+`npm install` automatically compiles TypeScript (via the `prepare` script), and `npm link` registers the `glyph` command globally so you can use it from anywhere.
+
+If `sudo npm link` isn't an option, use a user-writable npm prefix instead:
+
+```bash
+npm config set prefix ~/.npm-global
+echo 'export PATH="$HOME/.npm-global/bin:$PATH"' >> ~/.zshrc   # or ~/.bashrc
+source ~/.zshrc
 npm link
 ```
 
-Then use it anywhere:
+## Usage
 
 ```bash
 glyph README.md
-```
-
-If `npm link` fails with a permissions error, either:
-
-- Run `sudo npm link`, or
-- Set a user-writable prefix first:
-  ```bash
-  npm config set prefix ~/.npm-global
-  export PATH="$HOME/.npm-global/bin:$PATH"  # add to your .bashrc/.zshrc
-  npm link
-  ```
-
-## Usage
-
-```
-glyph <file.md>
+glyph ~/docs/notes.md
 ```
 
 ### Controls
 
 | Key | Action |
 |-----|--------|
-| `j` / `k` or `Up` / `Down` | Scroll one line |
-| `Space` / `b` | Scroll one page down / up |
+| `j` / `k` or `↑` / `↓` | Scroll one line |
+| `Space` / `b` | Page down / up |
 | `g` / `G` | Jump to top / bottom |
-| `/` | Enter search mode |
+| `/` | Search |
 | `n` / `N` | Next / previous search match |
 | `q` | Quit |
 
 ## Features
 
-- **h1**: FIGlet ASCII art (Standard font)
-- **h2**: Double-bordered box
-- **h3-h6**: Bold + color + underline with descending emphasis
-- **Code blocks**: Syntax-highlighted with bordered boxes
-- **Tables**: Box-drawing characters with alignment
-- **Lists**: Ordered, unordered, nested, task lists
+- **h1**: FIGlet ASCII art (Standard font, bold cyan)
+- **h2**: Double-bordered box (green)
+- **h3**: Bold + cyan + underline
+- **h4**: Bold + yellow
+- **h5**: Bold + dim
+- **h6**: Dim + underline
+- **Code blocks**: Syntax-highlighted with bordered boxes and language labels
+- **Tables**: Box-drawing characters with column alignment
+- **Lists**: Ordered, unordered, nested, and task lists
 - **Blockquotes**: Left-bordered italic text
 - **Inline formatting**: Bold, italic, strikethrough, inline code, links
-- **Pager**: Full-screen scrolling with search
+- **Horizontal rules**: Full-width terminal separators
+- **Pager**: Full-screen scrolling with search and match navigation
 
 ## Development
 
 ```bash
 npm run build    # compile TypeScript
 npm run dev      # watch mode
-npm start        # run directly
+npm start        # run directly without global install
 ```
