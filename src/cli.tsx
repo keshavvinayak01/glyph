@@ -1,9 +1,7 @@
-import React from 'react';
-import { render } from 'ink';
 import meow from 'meow';
 import fs from 'node:fs';
 import path from 'node:path';
-import App from './app.js';
+import { startPager } from './pager.js';
 
 const cli = meow(`
   Usage
@@ -31,7 +29,6 @@ const cli = meow(`
 const filePath = cli.input[0];
 
 if (!filePath) {
-  // Check for stdin pipe
   if (process.stdin.isTTY) {
     cli.showHelp();
     process.exit(1);
@@ -40,13 +37,13 @@ if (!filePath) {
   // Read from stdin
   let data = '';
   process.stdin.setEncoding('utf8');
-  process.stdin.on('data', (chunk) => { data += chunk; });
+  process.stdin.on('data', (chunk: string) => { data += chunk; });
   process.stdin.on('end', () => {
     if (!data.trim()) {
       console.error('Error: Empty input');
       process.exit(1);
     }
-    render(<App markdown={data} />);
+    startPager(data);
   });
 } else {
   const resolved = path.resolve(filePath);
@@ -69,11 +66,10 @@ if (!filePath) {
     process.exit(1);
   }
 
-  // Simple binary check - look for null bytes
   if (content.includes('\0')) {
     console.error('Error: File appears to be binary');
     process.exit(1);
   }
 
-  render(<App markdown={content} />);
+  startPager(content);
 }
