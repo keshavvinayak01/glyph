@@ -10,7 +10,8 @@
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
-    "start": "node bin/glyph.js"
+    "start": "node bin/glyph.js",
+    "prepare": "tsc"
   },
   "keywords": [
     "markdown",
