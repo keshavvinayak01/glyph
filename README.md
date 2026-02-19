@@ -1,8 +1,8 @@
-# Glyph
+# glyphmd
 
-CLI Markdown viewer with FIGlet ASCII art headings and a full-screen pager.
+A CLI markdown viewer with FIGlet ASCII art headings and a full-screen terminal pager.
 
-Unlike other terminal markdown viewers that only use bold+color for headings, Glyph renders h1 headings as large FIGlet ASCII art, h2 in double-bordered boxes, and h3-h6 with descending styled emphasis -- giving a browser-like visual hierarchy entirely within the terminal.
+Unlike other terminal markdown viewers that only use bold+color for headings, glyphmd renders h1 headings as large FIGlet ASCII art, h2 in double-bordered boxes, and h3-h6 with descending styled emphasis -- giving a browser-like visual hierarchy entirely within the terminal.
 
 ## Requirements
 
@@ -14,21 +14,23 @@ No other system dependencies. Works over SSH, no graphics protocols needed.
 ## Install
 
 ```bash
-git clone <repo-url> glyph
-cd glyph
+npm install -g glyphmd
+```
+
+Or from source:
+
+```bash
+git clone https://github.com/keshavvinayak/glyphmd
+cd glyphmd
 npm install
 sudo npm link
 ```
 
-`npm install` automatically compiles TypeScript (via the `prepare` script), and `sudo npm link` registers the `glyph` command globally in `/usr/local/bin` so you can use it from anywhere.
-
-> **Note:** If your npm prefix has been changed from the default (`/usr/local`), run `npm config delete prefix` before `sudo npm link` to ensure the symlink is created in the right place.
-
 ## Usage
 
 ```bash
-glyph README.md
-glyph ~/docs/notes.md
+glyphmd README.md
+glyphmd ~/docs/notes.md
 ```
 
 ### Controls

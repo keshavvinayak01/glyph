@@ -5,7 +5,7 @@ import { startPager } from './pager.js';
 
 const cli = meow(`
   Usage
-    $ glyph <file.md>
+    $ glyphmd <file.md>
 
   Options
     --help     Show this help message
@@ -19,8 +19,8 @@ const cli = meow(`
     q               Quit
 
   Examples
-    $ glyph README.md
-    $ glyph docs/guide.md
+    $ glyphmd README.md
+    $ glyphmd docs/guide.md
 `, {
   importMeta: import.meta,
   flags: {},
