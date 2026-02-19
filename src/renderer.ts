@@ -2,6 +2,11 @@ import chalk from 'chalk';
 import figlet from 'figlet';
 import { marked } from 'marked';
 import { highlight } from 'cli-highlight';
+import hljs from 'highlight.js';
+import mlirLang from './languages/mlir.js';
+
+// Register custom languages
+hljs.registerLanguage('mlir', mlirLang);
 
 const termWidth = process.stdout.columns || 80;
 
