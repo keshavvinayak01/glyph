@@ -20,7 +20,7 @@ npm install -g glyphmd
 Or from source:
 
 ```bash
-git clone https://github.com/keshavvinayak/glyphmd
+git clone https://github.com/keshavvinayak01/glyph
 cd glyphmd
 npm install
 sudo npm link
