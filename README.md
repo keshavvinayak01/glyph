@@ -42,6 +42,7 @@ glyphmd ~/docs/notes.md
 | `g` / `G` | Jump to top / bottom |
 | `/` | Search |
 | `n` / `N` | Next / previous search match |
+| `E` | Edit file in `$EDITOR` (default: vim) |
 | `q` | Quit |
 
 ## Features

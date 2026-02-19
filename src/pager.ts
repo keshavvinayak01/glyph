@@ -1,5 +1,6 @@
 import { renderFullDocument } from './renderer.js';
-import readline from 'node:readline';
+import { spawnSync } from 'node:child_process';
+import fs from 'node:fs';
 
 const ESC = '\x1b';
 const CSI = `${ESC}[`;
@@ -16,9 +17,9 @@ function stripAnsi(s: string): string {
   return s.replace(/\x1b\[[0-9;]*m/g, '');
 }
 
-export function startPager(markdown: string): void {
-  const lines = renderFullDocument(markdown);
-  const totalLines = lines.length;
+export function startPager(markdown: string, filePath?: string): void {
+  let lines = renderFullDocument(markdown);
+  let totalLines = lines.length;
 
   let scrollOffset = 0;
   let searchMode = false;
@@ -81,7 +82,8 @@ export function startPager(markdown: string): void {
       status = ` "${searchQuery}" ${matchIndices.length} matches | n/N:next/prev | q:quit `;
     } else {
       const end = Math.min(scrollOffset + viewHeight, totalLines);
-      status = ` ${scrollOffset + 1}-${end}/${totalLines} (${scrollPercent}%) | j/k:scroll  /:search  q:quit `;
+      const editHint = filePath ? '  E:edit' : '';
+      status = ` ${scrollOffset + 1}-${end}/${totalLines} (${scrollPercent}%) | j/k:scroll  /:search${editHint}  q:quit `;
     }
 
     // Inverse video for status bar, pad to full width
@@ -89,6 +91,40 @@ export function startPager(markdown: string): void {
     output += `${CSI}7m${padded}${CSI}0m`;
 
     process.stdout.write(output);
+  }
+
+  function reloadFile() {
+    if (!filePath) return;
+    const content = fs.readFileSync(filePath, 'utf8');
+    lines = renderFullDocument(content);
+    totalLines = lines.length;
+    const { rows } = getTermSize();
+    const viewHeight = rows - 1;
+    const maxScroll = Math.max(0, totalLines - viewHeight);
+    if (scrollOffset > maxScroll) scrollOffset = maxScroll;
+    if (searchQuery) computeMatches();
+  }
+
+  function openEditor() {
+    if (!filePath) return;
+
+    // Leave alt screen, restore terminal for vim
+    process.stdout.write(showCursor + exitAltScreen);
+    if (process.stdin.isTTY) {
+      process.stdin.setRawMode(false);
+    }
+
+    const editor = process.env.EDITOR || 'vim';
+    spawnSync(editor, [filePath], { stdio: 'inherit' });
+
+    // Re-enter pager: re-read file, re-render
+    reloadFile();
+
+    if (process.stdin.isTTY) {
+      process.stdin.setRawMode(true);
+    }
+    process.stdout.write(enterAltScreen + hideCursor + clearScreen);
+    render();
   }
 
   function cleanup() {
@@ -159,6 +195,12 @@ export function startPager(markdown: string): void {
     if (data === '\x03' || data === 'q') {
       cleanup();
       process.exit(0);
+    }
+
+    // E : open in editor
+    if (data === 'E' && filePath) {
+      openEditor();
+      return;
     }
 
     // / : search

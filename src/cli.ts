@@ -16,6 +16,7 @@ const cli = meow(`
     g/G             Jump to top/bottom
     /               Search
     n/N             Next/previous match
+    E               Edit file in $EDITOR (default: vim)
     q               Quit
 
   Examples
@@ -71,5 +72,5 @@ if (!filePath) {
     process.exit(1);
   }
 
-  startPager(content);
+  startPager(content, resolved);
 }
