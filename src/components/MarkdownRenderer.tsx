@@ -75,7 +75,7 @@ function renderToken(token: Token, index: number): React.ReactNode {
 export default function MarkdownRenderer({ tokens }: MarkdownRendererProps) {
   return (
     <Box flexDirection="column">
-      {tokens.map((token, i) => renderToken(token, i))}
+      {tokens.map((token: Token, i: number) => renderToken(token, i))}
     </Box>
   );
 }

@@ -1,9 +1,8 @@
-import { marked } from 'marked';
+import { marked, Token, TokensList } from 'marked';
 
-export type Token = marked.Token;
-export type Tokens = marked.TokensList;
+export type { Token, TokensList as Tokens };
 
-export function parseMarkdown(markdown: string): Tokens {
+export function parseMarkdown(markdown: string): TokensList {
   return marked.lexer(markdown);
 }
 
