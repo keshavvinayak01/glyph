@@ -9,7 +9,9 @@
   },
   "files": [
     "dist",
-    "bin"
+    "bin",
+    "README.md",
+    "CHANGELOG.md"
   ],
   "scripts": {
     "build": "tsc",
