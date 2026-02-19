@@ -106,10 +106,19 @@ function renderCodeBlock(token: any): string[] {
   const lang = token.lang || '';
   const code = token.text.replace(/\n$/, '');
   let highlighted: string;
+  // Suppress cli-highlight's stderr warning for unknown languages
+  const origStderrWrite = process.stderr.write;
+  process.stderr.write = (() => true) as typeof process.stderr.write;
   try {
     highlighted = highlight(code, { language: lang || 'plaintext', ignoreIllegals: true });
   } catch {
-    highlighted = code;
+    try {
+      highlighted = highlight(code, { ignoreIllegals: true });
+    } catch {
+      highlighted = code;
+    }
+  } finally {
+    process.stderr.write = origStderrWrite;
   }
 
   const codeLines = highlighted.split('\n');
