@@ -20,16 +20,9 @@ npm install
 sudo npm link
 ```
 
-`npm install` automatically compiles TypeScript (via the `prepare` script), and `npm link` registers the `glyph` command globally so you can use it from anywhere.
+`npm install` automatically compiles TypeScript (via the `prepare` script), and `sudo npm link` registers the `glyph` command globally in `/usr/local/bin` so you can use it from anywhere.
 
-If `sudo npm link` isn't an option, use a user-writable npm prefix instead:
-
-```bash
-npm config set prefix ~/.npm-global
-echo 'export PATH="$HOME/.npm-global/bin:$PATH"' >> ~/.zshrc   # or ~/.bashrc
-source ~/.zshrc
-npm link
-```
+> **Note:** If your npm prefix has been changed from the default (`/usr/local`), run `npm config delete prefix` before `sudo npm link` to ensure the symlink is created in the right place.
 
 ## Usage
 
