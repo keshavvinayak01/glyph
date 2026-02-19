@@ -1,7 +1,5 @@
 import React, { useState, useMemo } from 'react';
 import { Box, Text, useInput, useStdout } from 'ink';
-import { parseMarkdown } from './parser.js';
-import MarkdownRenderer from './components/MarkdownRenderer.js';
 import { renderFullDocument } from './renderer.js';
 
 interface AppProps {
