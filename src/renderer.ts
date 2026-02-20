@@ -78,13 +78,21 @@ function renderHeading(token: any): string[] {
   const depth = token.depth;
 
   if (depth === 1) {
-    try {
-      const ascii = figlet.textSync(text, { font: 'Standard' });
-      const lines = ascii.split('\n');
-      return ['', ...lines.map(l => chalk.bold.cyan(l)), ''];
-    } catch {
-      return ['', chalk.bold.cyan(text), ''];
+    const fonts = ['Standard', 'Small', 'Mini'] as const;
+    for (const font of fonts) {
+      try {
+        const ascii = figlet.textSync(text, { font });
+        const lines = ascii.split('\n');
+        const maxWidth = Math.max(...lines.map(l => l.length));
+        if (maxWidth <= termWidth) {
+          return ['', ...lines.map(l => chalk.bold.cyan(l)), ''];
+        }
+      } catch {
+        continue;
+      }
     }
+    // All fonts too wide — fall back to plain styled text
+    return ['', chalk.bold.cyan(text), ''];
   }
 
   if (depth === 2) {
