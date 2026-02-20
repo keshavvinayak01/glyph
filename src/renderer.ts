@@ -48,7 +48,7 @@ function renderInlineTokens(tokens: any[]): string {
       case 'del':
         return chalk.strikethrough(token.tokens ? renderInlineTokens(token.tokens) : token.text);
       case 'codespan':
-        return chalk.bgGray.white(` ${token.text} `);
+        return chalk.bgHex('#3c3c3c').hex('#e0e0e0')(` ${token.text} `);
       case 'link':
         return chalk.blue.underline(token.text) + chalk.dim(` (${token.href})`);
       case 'image':
