@@ -235,18 +235,57 @@ function renderTable(token: any): string[] {
     colWidths.push(max);
   }
 
+  // Shrink columns to fit terminal width if needed
+  // Total width = sum(colWidth + 2 padding) + (colCount + 1) border chars
+  const borderChars = colCount + 1;
+  const paddingChars = colCount * 2; // 1 space each side per column
+  const availableForContent = termWidth - borderChars - paddingChars;
+  const totalContentWidth = colWidths.reduce((a, b) => a + b, 0);
+
+  if (totalContentWidth > availableForContent && availableForContent > 0) {
+    const minColWidth = 3;
+    // Step 1: Cap outlier columns. No column gets more than 25% of available
+    // space (or the fair share if few columns), whichever is larger.
+    const fairShare = Math.floor(availableForContent / colCount);
+    const maxColWidth = Math.max(fairShare, Math.floor(availableForContent * 0.25));
+    for (let c = 0; c < colCount; c++) {
+      colWidths[c] = Math.min(colWidths[c], maxColWidth);
+    }
+
+    // Step 2: If still over budget, shrink proportionally from capped widths.
+    const cappedTotal = colWidths.reduce((a, b) => a + b, 0);
+    if (cappedTotal > availableForContent) {
+      const scale = availableForContent / cappedTotal;
+      let remaining = availableForContent;
+      for (let c = 0; c < colCount; c++) {
+        if (c === colCount - 1) {
+          colWidths[c] = Math.max(minColWidth, remaining);
+        } else {
+          colWidths[c] = Math.max(minColWidth, Math.floor(colWidths[c] * scale));
+          remaining -= colWidths[c];
+        }
+      }
+    }
+  }
+
+  function truncate(text: string, width: number): string {
+    if (text.length <= width) return text;
+    return width > 1 ? text.slice(0, width - 1) + '…' : text.slice(0, width);
+  }
+
   function pad(text: string, width: number, alignment: 'left' | 'center' | 'right' | null): string {
-    const diff = width - text.length;
-    if (diff <= 0) return text;
+    const truncated = truncate(text, width);
+    const diff = width - truncated.length;
+    if (diff <= 0) return truncated;
     switch (alignment) {
       case 'right':
-        return ' '.repeat(diff) + text;
+        return ' '.repeat(diff) + truncated;
       case 'center': {
         const left = Math.floor(diff / 2);
-        return ' '.repeat(left) + text + ' '.repeat(diff - left);
+        return ' '.repeat(left) + truncated + ' '.repeat(diff - left);
       }
       default:
-        return text + ' '.repeat(diff);
+        return truncated + ' '.repeat(diff);
     }
   }
 
@@ -323,4 +362,100 @@ export function renderFullDocument(markdown: string): string[] {
   }
 
   return allLines;
+}
+
+export interface CsvData {
+  headers: string[];
+  rows: string[][];
+  /** Natural (unconstrained) width of each column based on content */
+  naturalWidths: number[];
+}
+
+/**
+ * Compute initial column widths that fit the terminal, applying caps and
+ * proportional shrinking exactly like renderTable does for markdown tables.
+ */
+export function computeInitialColWidths(csv: CsvData): number[] {
+  const tw = process.stdout.columns || 80;
+  const colCount = csv.headers.length;
+  const colWidths = csv.naturalWidths.slice();
+
+  const borderChars = colCount + 1;
+  const paddingChars = colCount * 2;
+  const availableForContent = tw - borderChars - paddingChars;
+  const totalContentWidth = colWidths.reduce((a, b) => a + b, 0);
+
+  if (totalContentWidth > availableForContent && availableForContent > 0) {
+    const minColWidth = 3;
+    const fairShare = Math.floor(availableForContent / colCount);
+    const maxColWidth = Math.max(fairShare, Math.floor(availableForContent * 0.25));
+    for (let c = 0; c < colCount; c++) {
+      colWidths[c] = Math.min(colWidths[c], maxColWidth);
+    }
+    const cappedTotal = colWidths.reduce((a, b) => a + b, 0);
+    if (cappedTotal > availableForContent) {
+      const scale = availableForContent / cappedTotal;
+      let remaining = availableForContent;
+      for (let c = 0; c < colCount; c++) {
+        if (c === colCount - 1) {
+          colWidths[c] = Math.max(minColWidth, remaining);
+        } else {
+          colWidths[c] = Math.max(minColWidth, Math.floor(colWidths[c] * scale));
+          remaining -= colWidths[c];
+        }
+      }
+    }
+  }
+
+  return colWidths;
+}
+
+/**
+ * Render a CSV table with caller-supplied column widths and an optional
+ * focused column (highlighted in light blue).
+ */
+export function renderCsvTable(
+  csv: CsvData,
+  colWidths: number[],
+  focusedCol: number | null,
+): string[] {
+  const { headers, rows } = csv;
+  const colCount = headers.length;
+
+  function truncate(text: string, width: number): string {
+    if (text.length <= width) return text;
+    return width > 1 ? text.slice(0, width - 1) + '…' : text.slice(0, width);
+  }
+
+  function pad(text: string, width: number): string {
+    const truncated = truncate(text, width);
+    const diff = width - truncated.length;
+    if (diff <= 0) return truncated;
+    return truncated + ' '.repeat(diff);
+  }
+
+  const topBorder = '┌' + colWidths.map(w => '─'.repeat(w + 2)).join('┬') + '┐';
+  const midBorder = '├' + colWidths.map(w => '─'.repeat(w + 2)).join('┼') + '┤';
+  const botBorder = '└' + colWidths.map(w => '─'.repeat(w + 2)).join('┴') + '┘';
+
+  function renderRow(cells: string[], isHeader: boolean): string {
+    const parts = cells.map((cell, c) => {
+      const content = ' ' + pad(cell, colWidths[c]) + ' ';
+      const isFocused = focusedCol === c;
+      if (isHeader && isFocused) return chalk.bgBlueBright.black.bold(content);
+      if (isHeader) return chalk.bold(content);
+      if (isFocused) return chalk.bgBlueBright.black(content);
+      return content;
+    });
+    return '│' + parts.join('│') + '│';
+  }
+
+  const lines = [topBorder, renderRow(headers, true), midBorder];
+  for (const row of rows) {
+    const padded = headers.map((_, i) => row[i] ?? '');
+    lines.push(renderRow(padded, false));
+  }
+  lines.push(botBorder);
+
+  return lines;
 }

@@ -2,10 +2,11 @@ import meow from 'meow';
 import fs from 'node:fs';
 import path from 'node:path';
 import { startPager } from './pager.js';
+import { parseCsv } from './utils/csv.js';
 
 const cli = meow(`
   Usage
-    $ glyphmd <file.md>
+    $ glyphmd <file.md|file.csv>
 
   Options
     --help     Show this help message
@@ -19,9 +20,18 @@ const cli = meow(`
     E               Edit file in $EDITOR (default: vim)
     q               Quit
 
+  CSV Controls
+    Tab             Cycle focus to next column
+    Shift+Tab       Cycle focus to previous column
+    1-9             Jump focus to column 1-9
+    +/=             Expand focused column
+    -               Shrink focused column
+    0               Reset column widths
+
   Examples
     $ glyphmd README.md
     $ glyphmd docs/guide.md
+    $ glyphmd data.csv
 `, {
   importMeta: import.meta,
   flags: {},
@@ -72,5 +82,25 @@ if (!filePath) {
     process.exit(1);
   }
 
-  startPager(content, resolved);
+  const ext = path.extname(resolved).toLowerCase();
+  if (ext === '.csv') {
+    const parsed = parseCsv(content);
+    if (parsed.length < 2) {
+      console.error('Error: CSV file has no data');
+      process.exit(1);
+    }
+    const headers = parsed[0];
+    const rows = parsed.slice(1);
+    const naturalWidths: number[] = [];
+    for (let c = 0; c < headers.length; c++) {
+      let max = headers[c].length;
+      for (const row of rows) {
+        if (row[c] && row[c].length > max) max = row[c].length;
+      }
+      naturalWidths.push(max);
+    }
+    startPager(content, resolved, { headers, rows, naturalWidths });
+  } else {
+    startPager(content, resolved);
+  }
 }

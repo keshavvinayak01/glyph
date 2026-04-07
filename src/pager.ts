@@ -1,4 +1,5 @@
-import { renderFullDocument } from './renderer.js';
+import { renderFullDocument, renderCsvTable, computeInitialColWidths } from './renderer.js';
+import type { CsvData } from './renderer.js';
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 
@@ -17,8 +18,22 @@ function stripAnsi(s: string): string {
   return s.replace(/\x1b\[[0-9;]*m/g, '');
 }
 
-export function startPager(markdown: string, filePath?: string): void {
-  let lines = renderFullDocument(markdown);
+export function startPager(markdown: string, filePath?: string, csvData?: CsvData): void {
+  // CSV interactive state
+  const isCsv = !!csvData;
+  let focusedCol: number | null = null;
+  let colWidths: number[] = csvData ? computeInitialColWidths(csvData) : [];
+  const RESIZE_STEP = 2;
+  const MIN_COL_WIDTH = 3;
+
+  function renderLines(): string[] {
+    if (isCsv && csvData) {
+      return renderCsvTable(csvData, colWidths, focusedCol);
+    }
+    return renderFullDocument(markdown);
+  }
+
+  let lines = renderLines();
   let totalLines = lines.length;
 
   let scrollOffset = 0;
@@ -83,7 +98,12 @@ export function startPager(markdown: string, filePath?: string): void {
     } else {
       const end = Math.min(scrollOffset + viewHeight, totalLines);
       const editHint = filePath ? '  E:edit' : '';
-      status = ` ${scrollOffset + 1}-${end}/${totalLines} (${scrollPercent}%) | j/k:scroll  /:search${editHint}  q:quit `;
+      const csvHint = isCsv
+        ? (focusedCol !== null
+          ? ` | col ${focusedCol + 1}/${csvData!.headers.length}: "${csvData!.headers[focusedCol]}" | +/-:resize  Tab:next  0:reset`
+          : ' | Tab/1-9:select col')
+        : '';
+      status = ` ${scrollOffset + 1}-${end}/${totalLines} (${scrollPercent}%) | j/k:scroll  /:search${editHint}${csvHint}  q:quit `;
     }
 
     // Inverse video for status bar, pad to full width
@@ -96,7 +116,12 @@ export function startPager(markdown: string, filePath?: string): void {
   function reloadFile() {
     if (!filePath) return;
     const content = fs.readFileSync(filePath, 'utf8');
-    lines = renderFullDocument(content);
+    if (isCsv) {
+      // For CSV, just re-render with current widths/focus
+      lines = renderLines();
+    } else {
+      lines = renderFullDocument(content);
+    }
     totalLines = lines.length;
     const { rows } = getTermSize();
     const viewHeight = rows - 1;
@@ -148,6 +173,11 @@ export function startPager(markdown: string, filePath?: string): void {
   render();
 
   process.stdout.on('resize', () => {
+    if (isCsv && csvData) {
+      colWidths = computeInitialColWidths(csvData);
+      lines = renderLines();
+      totalLines = lines.length;
+    }
     process.stdout.write(clearScreen);
     render();
   });
@@ -241,6 +271,84 @@ export function startPager(markdown: string, filePath?: string): void {
         scrollOffset = Math.min(prev[prev.length - 1], maxScroll);
       } else if (matchIndices.length > 0) {
         scrollOffset = Math.min(matchIndices[matchIndices.length - 1], maxScroll);
+      }
+    }
+
+    // CSV column controls
+    if (isCsv && csvData) {
+      const colCount = csvData.headers.length;
+      let csvChanged = false;
+
+      // Tab: cycle focus forward
+      if (data === '\t') {
+        focusedCol = focusedCol === null ? 0 : (focusedCol + 1) % colCount;
+        csvChanged = true;
+      }
+      // Shift+Tab: cycle focus backward
+      else if (data === '\x1b[Z') {
+        focusedCol = focusedCol === null ? colCount - 1 : (focusedCol - 1 + colCount) % colCount;
+        csvChanged = true;
+      }
+      // 1-9: jump to column
+      else if (data >= '1' && data <= '9' && !searchQuery) {
+        const col = parseInt(data) - 1;
+        if (col < colCount) {
+          focusedCol = col;
+          csvChanged = true;
+        }
+      }
+      // 0: reset widths and clear focus
+      else if (data === '0' && !searchQuery) {
+        focusedCol = null;
+        colWidths = computeInitialColWidths(csvData);
+        csvChanged = true;
+      }
+      // +/=: expand focused column (steal from neighbors)
+      else if ((data === '+' || data === '=') && focusedCol !== null) {
+        const totalBudget = colWidths.reduce((a, b) => a + b, 0);
+        const maxW = csvData.naturalWidths[focusedCol];
+        if (colWidths[focusedCol] < maxW) {
+          colWidths[focusedCol] += RESIZE_STEP;
+          // Shrink other columns to compensate
+          let debt = RESIZE_STEP;
+          for (let c = 0; c < colCount && debt > 0; c++) {
+            if (c === focusedCol) continue;
+            const shrink = Math.min(debt, colWidths[c] - MIN_COL_WIDTH);
+            if (shrink > 0) {
+              colWidths[c] -= shrink;
+              debt -= shrink;
+            }
+          }
+          if (debt > 0) colWidths[focusedCol] -= debt; // can't steal enough, undo
+        }
+        csvChanged = true;
+      }
+      // -: shrink focused column (give to neighbors)
+      else if (data === '-' && focusedCol !== null) {
+        if (colWidths[focusedCol] > MIN_COL_WIDTH) {
+          const shrink = Math.min(RESIZE_STEP, colWidths[focusedCol] - MIN_COL_WIDTH);
+          colWidths[focusedCol] -= shrink;
+          // Distribute freed space to the narrowest columns
+          let gift = shrink;
+          // Sort other columns by width (ascending) to give to the most cramped
+          const others = Array.from({ length: colCount }, (_, i) => i)
+            .filter(i => i !== focusedCol)
+            .sort((a, b) => colWidths[a] - colWidths[b]);
+          for (const c of others) {
+            if (gift <= 0) break;
+            const give = Math.min(gift, Math.max(1, Math.floor(shrink / others.length)));
+            colWidths[c] += give;
+            gift -= give;
+          }
+          if (gift > 0) colWidths[others[0]] += gift;
+        }
+        csvChanged = true;
+      }
+
+      if (csvChanged) {
+        lines = renderLines();
+        totalLines = lines.length;
+        if (searchQuery) computeMatches();
       }
     }
 
