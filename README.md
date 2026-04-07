@@ -1,6 +1,6 @@
 # glyphmd
 
-A CLI markdown viewer with FIGlet ASCII art headings and a full-screen terminal pager.
+A CLI markdown and CSV viewer with FIGlet ASCII art headings and a full-screen terminal pager.
 
 Unlike other terminal markdown viewers that only use bold+color for headings, glyphmd renders h1 headings as large FIGlet ASCII art, h2 in double-bordered boxes, and h3-h6 with descending styled emphasis -- giving a browser-like visual hierarchy entirely within the terminal.
 
@@ -31,6 +31,7 @@ sudo npm link
 ```bash
 glyphmd README.md
 glyphmd ~/docs/notes.md
+glyphmd data.csv
 ```
 
 ### Controls
@@ -44,6 +45,16 @@ glyphmd ~/docs/notes.md
 | `n` / `N` | Next / previous search match |
 | `E` | Edit file in `$EDITOR` (default: vim) |
 | `q` | Quit |
+
+#### CSV column controls
+
+| Key | Action |
+|-----|--------|
+| `Tab` / `Shift+Tab` | Focus next / previous column |
+| `1`-`9` | Jump to column 1-9 |
+| `+` / `=` | Expand focused column |
+| `-` | Shrink focused column |
+| `0` | Reset all column widths |
 
 ## Features
 
@@ -59,6 +70,7 @@ glyphmd ~/docs/notes.md
 - **Blockquotes**: Left-bordered italic text
 - **Inline formatting**: Bold, italic, strikethrough, inline code, links
 - **Horizontal rules**: Full-width terminal separators
+- **CSV files**: Direct viewing with box-drawn tables, interactive column resizing, and auto-fitted widths
 - **Pager**: Full-screen scrolling with search and match navigation
 
 ## Development
